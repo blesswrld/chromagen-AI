@@ -5,7 +5,7 @@ export const handleCopyToClipboard = async (text: string, message: string) => {
     try {
         await navigator.clipboard.writeText(text);
         toast.success(message);
-    } catch (err) {
+    } catch {
         toast.error("Не удалось скопировать!");
     }
 };
