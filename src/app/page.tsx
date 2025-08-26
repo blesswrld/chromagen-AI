@@ -7,6 +7,7 @@ import { Text, Spacer } from "@geist-ui/core";
 import { PromptForm } from "@/components/PromptForm";
 import { PaletteDisplay } from "@/components/PaletteDisplay";
 import { HistorySection } from "@/components/HistorySection";
+import { ImageUploader } from "@/components/ImageUploader"; // <-- ИМПОРТ
 
 // Импортируем константы и утилиты
 import { examplePrompts, HISTORY_LIMIT } from "@/lib/constants";
@@ -47,7 +48,7 @@ export default function HomePage() {
 
         setLoading(true);
         setError(null);
-        setPalette([]);
+        setPalette([]); // Очищаем текущую палитру перед новым запросом
 
         try {
             // Отправляем ВСЕ параметры на бэкенд
@@ -138,6 +139,23 @@ export default function HomePage() {
         );
     };
 
+    // Принимает палитру из ImageUploader
+    const handlePaletteFromImage = (extractedPalette: string[]) => {
+        setPalette(extractedPalette);
+        setPrompt("Из изображения");
+        setError(null);
+        setFrozenColors([]);
+        toast.success("Палитра из изображения успешно извлечена!");
+
+        const newHistoryItem: HistoryItem = {
+            prompt: "Из изображения",
+            palette: extractedPalette,
+        };
+        const newHistory = [newHistoryItem, ...history].slice(0, HISTORY_LIMIT);
+        setHistory(newHistory);
+        localStorage.setItem("chromagen-history", JSON.stringify(newHistory));
+    };
+
     // --- ОТРИСОВКА ---
     return (
         <main className="flex min-h-[60vh] w-full flex-col items-center justify-center bg-white p-4 pb-24">
@@ -146,7 +164,8 @@ export default function HomePage() {
                     ChromaGen
                 </Text>
                 <Text p className="text-gray-500">
-                    Опишите идею, и AI создаст для вас цветовую палитру.
+                    Опишите идею, и AI создаст для вас цветовую палитру, или
+                    загрузите изображение.
                 </Text>
                 <Spacer h={2} />
 
@@ -164,6 +183,8 @@ export default function HomePage() {
                     style={style}
                     setStyle={setStyle}
                 />
+
+                <ImageUploader onPaletteExtracted={handlePaletteFromImage} />
             </div>
 
             <Spacer h={3} />
