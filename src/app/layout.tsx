@@ -1,23 +1,24 @@
-import { Providers } from "./providers";
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
+import { Providers } from "./providers";
 
-export const metadata = {
-    title: "ChromaGen, AI-powered color palette generator",
-    // description: "AI-powered color palette generator",
+const inter = Inter({ subsets: ["latin"] });
+
+export const metadata: Metadata = {
+    title: "ChromaGen",
+    description: "AI-powered color palette generator",
 };
 
 export default function RootLayout({
     children,
-}: {
+}: Readonly<{
     children: React.ReactNode;
-}) {
+}>) {
     return (
         <html lang="ru">
-            <body>
-                <Providers>
-                    {/* <--- Используем обертку */}
-                    {children}
-                </Providers>
+            <body className={inter.className}>
+                <Providers>{children}</Providers>
             </body>
         </html>
     );

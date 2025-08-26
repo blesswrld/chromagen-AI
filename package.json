@@ -12,6 +12,7 @@
         "@geist-ui/core": "^2.3.8",
         "@google/generative-ai": "^0.24.1",
         "@huggingface/inference": "^4.7.1",
+        "framer-motion": "^12.23.12",
         "groq-sdk": "^0.30.0",
         "lucide-react": "^0.542.0",
         "next": "15.5.1",

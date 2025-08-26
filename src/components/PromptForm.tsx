@@ -11,6 +11,10 @@ type PromptFormProps = {
     loading: boolean;
     handleGenerate: () => void;
     handleLuckyClick: () => void;
+    colorCount: number;
+    setColorCount: (count: number) => void;
+    style: string;
+    setStyle: (style: string) => void;
 };
 
 export function PromptForm({
@@ -21,6 +25,10 @@ export function PromptForm({
     loading,
     handleGenerate,
     handleLuckyClick,
+    colorCount,
+    setColorCount,
+    style,
+    setStyle,
 }: PromptFormProps) {
     return (
         <div className="flex w-full flex-col gap-3">
@@ -39,7 +47,32 @@ export function PromptForm({
                 </Select.Option>
             </Select>
 
-            {/* Используем Grid для Input и Button */}
+            {/* Адаптивный блок для селектов */}
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {/* @ts-expect-error Geist UI props conflict with React 18 types */}
+                <Select
+                    placeholder="Количество цветов"
+                    value={String(colorCount)}
+                    onChange={(v) => setColorCount(Number(v))}
+                >
+                    <Select.Option value="3">3</Select.Option>
+                    <Select.Option value="4">4</Select.Option>
+                    <Select.Option value="5">5</Select.Option>
+                    <Select.Option value="6">6</Select.Option>
+                </Select>
+                {/* @ts-expect-error Geist UI props conflict with React 18 types */}
+                <Select
+                    placeholder="Стиль"
+                    value={style}
+                    onChange={(v) => setStyle(v as string)}
+                >
+                    <Select.Option value="default">По умолчанию</Select.Option>
+                    <Select.Option value="pastel">Пастельный</Select.Option>
+                    <Select.Option value="vibrant">Яркий</Select.Option>
+                    <Select.Option value="dark">Темный</Select.Option>
+                </Select>
+            </div>
+
             <div className="grid w-full grid-cols-[1fr_auto_auto] items-center gap-2">
                 {/* @ts-expect-error Geist UI props conflict with React 18 types */}
                 <Input

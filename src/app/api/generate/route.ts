@@ -13,7 +13,8 @@ const hf = new InferenceClient(process.env.HUGGINGFACE_API_KEY);
 
 export async function POST(req: Request) {
     try {
-        const { prompt, model } = await req.json();
+        const { prompt, model, colorCount, style, frozenColors } =
+            await req.json();
 
         if (!prompt) {
             return NextResponse.json(
@@ -22,7 +23,30 @@ export async function POST(req: Request) {
             );
         }
 
-        const systemPrompt = `You are an expert color palette designer. Your task is to generate a color palette of 5 harmonious colors based on the user's text description. Respond ONLY in a valid JSON array of strings, where each string is a HEX color code. Do not add any explanations, comments, or markdown formatting (no \`\`\`json). Example response: ["#FFFFFF", "#000000", "#FF0000", "#0000FF", "#0000FF"]`;
+        // Динамически строим системный промпт
+        let systemPrompt = `You are an expert color palette designer.`;
+
+        // Добавляем логику для "замороженных" цветов
+        if (frozenColors && frozenColors.length > 0) {
+            systemPrompt += ` Generate a palette that harmonizes with these existing colors: ${frozenColors.join(
+                ", "
+            )}. Include these exact colors in the final output. The total number of colors should be ${
+                colorCount || 5
+            }.`;
+        } else {
+            // Стандартная логика, если нет "замороженных" цветов
+            systemPrompt += ` Your task is to generate a color palette of ${
+                colorCount || 5
+            } harmonious colors based on the user's text description.`;
+        }
+
+        // Добавляем уточнение по стилю, если он выбран
+        if (style && style !== "default") {
+            systemPrompt += ` The palette should be in a ${style} style.`;
+        }
+
+        // Заключительная, самая важная часть промпта
+        systemPrompt += ` Respond ONLY in a valid JSON array of strings, where each string is a HEX color code. Do not add any explanations, comments, or markdown formatting (no \`\`\`json). Example response: ["#FFFFFF", "#000000", "#FF0000", "#0000FF", "#0000FF"]`;
 
         // Разрешаем переменной принимать 'undefined'
         let content: string | null | undefined = null;
@@ -46,6 +70,7 @@ export async function POST(req: Request) {
                 ],
                 max_tokens: 200,
             });
+
             // Новый класс возвращает content как string, а не object
             // Поэтому, если content есть, он уже строка. Если нет, он null.
             if (chatCompletion.choices[0].message) {

@@ -11,6 +11,8 @@ import { HistorySection } from "@/components/HistorySection";
 // Импортируем константы и утилиты
 import { examplePrompts, HISTORY_LIMIT } from "@/lib/constants";
 import { generateCssExport, handleCopyToClipboard } from "@/lib/utils";
+import { HistoryItem } from "@/types";
+import toast from "react-hot-toast";
 
 export default function HomePage() {
     // --- УПРАВЛЕНИЕ СОСТОЯНИЕМ ---
@@ -19,18 +21,19 @@ export default function HomePage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [selectedModel, setSelectedModel] = useState("groq");
-    const [history, setHistory] = useState<string[][]>([]);
+    const [history, setHistory] = useState<HistoryItem[]>([]);
     const [selectedHistoryIndices, setSelectedHistoryIndices] = useState<
         number[]
     >([]);
+    const [colorCount, setColorCount] = useState<number>(5);
+    const [style, setStyle] = useState<string>("default");
+    const [frozenColors, setFrozenColors] = useState<string[]>([]);
 
     // Загрузка истории из localStorage при первом рендере
     useEffect(() => {
         try {
             const storedHistory = localStorage.getItem("chromagen-history");
-            if (storedHistory) {
-                setHistory(JSON.parse(storedHistory));
-            }
+            if (storedHistory) setHistory(JSON.parse(storedHistory));
         } catch (e) {
             console.error("Failed to parse history", e);
         }
@@ -47,11 +50,17 @@ export default function HomePage() {
         setPalette([]);
 
         try {
-            // Передаем выбранную модель в теле запроса
+            // Отправляем ВСЕ параметры на бэкенд
             const response = await fetch("/api/generate", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ prompt, model: selectedModel }),
+                body: JSON.stringify({
+                    prompt,
+                    model: selectedModel,
+                    colorCount,
+                    style,
+                    frozenColors,
+                }),
             });
 
             if (!response.ok) throw new Error("Ошибка сети или сервера");
@@ -61,7 +70,11 @@ export default function HomePage() {
 
             if (data.palette && data.palette.length > 0) {
                 setPalette(data.palette);
-                const newHistory = [data.palette, ...history].slice(
+                const newHistoryItem: HistoryItem = {
+                    prompt,
+                    palette: data.palette,
+                };
+                const newHistory = [newHistoryItem, ...history].slice(
                     0,
                     HISTORY_LIMIT
                 );
@@ -93,11 +106,16 @@ export default function HomePage() {
         );
     };
 
-    // Экспортирует выбранные палитры
+    const handlePromptClick = (p: string) => {
+        setPrompt(p);
+        toast("Промпт скопирован в поле ввода!");
+    };
+
     const handleExportSelected = () => {
-        const selectedPalettes = history.filter((_, index) =>
+        const selectedItems = history.filter((_, index) =>
             selectedHistoryIndices.includes(index)
         );
+        const selectedPalettes = selectedItems.map((item) => item.palette);
         const allColors = selectedPalettes.flat();
         handleCopyToClipboard(
             generateCssExport(allColors),
@@ -112,11 +130,19 @@ export default function HomePage() {
         setPrompt(randomPrompt);
     };
 
+    const handleToggleFreeze = (color: string) => {
+        setFrozenColors((prev) =>
+            prev.includes(color)
+                ? prev.filter((c) => c !== color)
+                : [...prev, color]
+        );
+    };
+
     // --- ОТРИСОВКА ---
     return (
         <main className="flex min-h-[60vh] w-full flex-col items-center justify-center bg-white p-4 pb-24">
             <div className="w-full max-w-2xl text-center">
-                <Text h1 className="font-bold">
+                <Text h1 className="font-bold text-2xl">
                     ChromaGen
                 </Text>
                 <Text p className="text-gray-500">
@@ -132,6 +158,11 @@ export default function HomePage() {
                     loading={loading}
                     handleGenerate={handleGenerate}
                     handleLuckyClick={handleLuckyClick}
+                    // Передаем пропсы
+                    colorCount={colorCount}
+                    setColorCount={setColorCount}
+                    style={style}
+                    setStyle={setStyle}
                 />
             </div>
 
@@ -143,7 +174,12 @@ export default function HomePage() {
                         {error}
                     </Text>
                 )}
-                <PaletteDisplay palette={palette} />
+                <PaletteDisplay
+                    palette={palette}
+                    // Передаем пропсы
+                    frozenColors={frozenColors}
+                    onToggleFreeze={handleToggleFreeze}
+                />
             </div>
 
             <HistorySection
@@ -151,6 +187,8 @@ export default function HomePage() {
                 selectedHistoryIndices={selectedHistoryIndices}
                 handleToggleHistorySelection={handleToggleHistorySelection}
                 handleExportSelected={handleExportSelected}
+                // Передаем пропс
+                onPromptClick={handlePromptClick}
             />
         </main>
     );
