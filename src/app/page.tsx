@@ -158,7 +158,8 @@ export default function HomePage() {
 
     // --- ОТРИСОВКА ---
     return (
-        <main className="flex min-h-[60vh] w-full flex-col items-center justify-center bg-white p-4 pb-24">
+        <main className="relative flex min-h-[100vh] w-full flex-col items-center p-4 pb-24">
+            <div className="absolute inset-0 -z-10 h-full w-full bg-gradient-to-r from-gray-50 via-slate-50 to-stone-50" />
             <div className="w-full max-w-2xl text-center">
                 <Text h1 className="font-bold text-2xl">
                     ChromaGen
