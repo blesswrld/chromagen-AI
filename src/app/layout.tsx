@@ -2,8 +2,8 @@ import { Providers } from "./providers";
 import "./globals.css";
 
 export const metadata = {
-    title: "ChromaGen",
-    description: "AI-powered color palette generator",
+    title: "ChromaGen, AI-powered color palette generator",
+    // description: "AI-powered color palette generator",
 };
 
 export default function RootLayout({
@@ -15,7 +15,6 @@ export default function RootLayout({
         <html lang="ru">
             <body>
                 <Providers>
-                    {" "}
                     {/* <--- Используем обертку */}
                     {children}
                 </Providers>

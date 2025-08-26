@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Groq from "groq-sdk";
-import { HfInference } from "@huggingface/inference";
+// Импортируем новый класс InferenceClient
+import { InferenceClient } from "@huggingface/inference";
 
 // Клиент для Groq
 const groq = new Groq({
@@ -8,7 +9,7 @@ const groq = new Groq({
 });
 
 // Клиент для Hugging Face
-const hf = new HfInference(process.env.HUGGINGFACE_API_KEY);
+const hf = new InferenceClient(process.env.HUGGINGFACE_API_KEY);
 
 export async function POST(req: Request) {
     try {
@@ -45,7 +46,11 @@ export async function POST(req: Request) {
                 ],
                 max_tokens: 200,
             });
-            content = chatCompletion.choices[0].message.content;
+            // Новый класс возвращает content как string, а не object
+            // Поэтому, если content есть, он уже строка. Если нет, он null.
+            if (chatCompletion.choices[0].message) {
+                content = chatCompletion.choices[0].message.content;
+            }
         } else {
             return NextResponse.json(
                 { error: "Неизвестная модель AI" },
@@ -57,7 +62,7 @@ export async function POST(req: Request) {
             throw new Error("AI не вернул результат");
         }
 
-        // Эта логикабудет одинаково хорошо работать для обеих моделей
+        // Эта логика будет одинаково хорошо работать для обеих моделей
         const jsonMatch = content.match(/\[.*\]/s);
         const jsonString = jsonMatch ? jsonMatch[0] : content.trim();
         const parsedContent = JSON.parse(jsonString);

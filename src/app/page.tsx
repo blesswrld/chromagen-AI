@@ -1,24 +1,40 @@
 "use client";
 
-import { useState } from "react";
-import {
-    Text,
-    Input,
-    Button,
-    Spacer,
-    Card,
-    Spinner,
-    Snippet,
-    Tooltip,
-    Select, // <-- Импортируем Select
-} from "@geist-ui/core";
+import { useEffect, useState } from "react";
+import { Text, Spacer } from "@geist-ui/core";
+
+// Импортируем наши новые компоненты
+import { PromptForm } from "@/components/PromptForm";
+import { PaletteDisplay } from "@/components/PaletteDisplay";
+import { HistorySection } from "@/components/HistorySection";
+
+// Импортируем константы и утилиты
+import { examplePrompts, HISTORY_LIMIT } from "@/lib/constants";
+import { generateCssExport, handleCopyToClipboard } from "@/lib/utils";
 
 export default function HomePage() {
+    // --- УПРАВЛЕНИЕ СОСТОЯНИЕМ ---
     const [prompt, setPrompt] = useState("");
     const [palette, setPalette] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [selectedModel, setSelectedModel] = useState("groq");
+    const [history, setHistory] = useState<string[][]>([]);
+    const [selectedHistoryIndices, setSelectedHistoryIndices] = useState<
+        number[]
+    >([]);
+
+    // Загрузка истории из localStorage при первом рендере
+    useEffect(() => {
+        try {
+            const storedHistory = localStorage.getItem("chromagen-history");
+            if (storedHistory) {
+                setHistory(JSON.parse(storedHistory));
+            }
+        } catch (e) {
+            console.error("Failed to parse history", e);
+        }
+    }, []);
 
     const handleGenerate = async () => {
         if (!prompt) {
@@ -35,7 +51,7 @@ export default function HomePage() {
             const response = await fetch("/api/generate", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ prompt, model: selectedModel }), // <-- Отправляем модель
+                body: JSON.stringify({ prompt, model: selectedModel }),
             });
 
             if (!response.ok) throw new Error("Ошибка сети или сервера");
@@ -43,16 +59,62 @@ export default function HomePage() {
             const data = await response.json();
             if (data.error) throw new Error(data.error);
 
-            setPalette(data.palette);
-        } catch (err: any) {
-            setError(err.message || "Произошла неизвестная ошибка.");
+            if (data.palette && data.palette.length > 0) {
+                setPalette(data.palette);
+                const newHistory = [data.palette, ...history].slice(
+                    0,
+                    HISTORY_LIMIT
+                );
+                setHistory(newHistory);
+                localStorage.setItem(
+                    "chromagen-history",
+                    JSON.stringify(newHistory)
+                );
+            } else {
+                setError("AI вернул пустую палитру. Попробуйте другой запрос.");
+            }
+        } catch (err: unknown) {
+            if (err instanceof Error) {
+                setError(err.message);
+            } else {
+                setError("Произошла неизвестная ошибка.");
+            }
         } finally {
             setLoading(false);
         }
     };
 
+    // Переключает выбор палитры в истории
+    const handleToggleHistorySelection = (index: number) => {
+        setSelectedHistoryIndices((prev) =>
+            prev.includes(index)
+                ? prev.filter((i) => i !== index)
+                : [...prev, index]
+        );
+    };
+
+    // Экспортирует выбранные палитры
+    const handleExportSelected = () => {
+        const selectedPalettes = history.filter((_, index) =>
+            selectedHistoryIndices.includes(index)
+        );
+        const allColors = selectedPalettes.flat();
+        handleCopyToClipboard(
+            generateCssExport(allColors),
+            `CSS для ${allColors.length} цветов скопирован!`
+        );
+    };
+
+    // Обработчик для кнопки "Мне повезет!"
+    const handleLuckyClick = () => {
+        const randomPrompt =
+            examplePrompts[Math.floor(Math.random() * examplePrompts.length)];
+        setPrompt(randomPrompt);
+    };
+
+    // --- ОТРИСОВКА ---
     return (
-        <main className="flex min-h-[60vh] w-full flex-col items-center justify-center bg-white p-4">
+        <main className="flex min-h-[60vh] w-full flex-col items-center justify-center bg-white p-4 pb-24">
             <div className="w-full max-w-2xl text-center">
                 <Text h1 className="font-bold">
                     ChromaGen
@@ -62,77 +124,34 @@ export default function HomePage() {
                 </Text>
                 <Spacer h={2} />
 
-                {/* Блок с формой и переключателем */}
-                <div className="flex flex-col gap-3">
-                    <Select
-                        placeholder="Выберите модель"
-                        value={selectedModel}
-                        onChange={(val) => setSelectedModel(val as string)}
-                        width="100%"
-                    >
-                        <Select.Option value="groq">
-                            Groq (Сверхбыстрая)
-                        </Select.Option>
-                        <Select.Option value="huggingface">
-                            Hugging Face (Бесплатная)
-                        </Select.Option>
-                    </Select>
-
-                    <div className="flex w-full items-center gap-2">
-                        <Input
-                            value={prompt}
-                            onChange={(e) => setPrompt(e.target.value)}
-                            placeholder="Например, неоновый Токио ночью"
-                            width="100%"
-                            disabled={loading}
-                        />
-                        <Button
-                            onClick={handleGenerate}
-                            disabled={loading}
-                            auto
-                            type="secondary-light"
-                            // Добавляем классы для идеального центрирования содержимого
-                            className="!flex !items-center !justify-center"
-                        >
-                            {loading ? <Spinner /> : "Сгенерировать"}
-                        </Button>
-                    </div>
-                </div>
+                <PromptForm
+                    prompt={prompt}
+                    setPrompt={setPrompt}
+                    selectedModel={selectedModel}
+                    setSelectedModel={setSelectedModel}
+                    loading={loading}
+                    handleGenerate={handleGenerate}
+                    handleLuckyClick={handleLuckyClick}
+                />
             </div>
 
             <Spacer h={3} />
 
-            {/* Блок с результатом */}
-            <div className="w-full max-w-2xl">
+            <div className="mt-8 w-full max-w-2xl">
                 {error && (
                     <Text p type="error">
                         {error}
                     </Text>
                 )}
-                {palette.length > 0 && (
-                    <Card width="100%">
-                        <Text h4 className="text-center">
-                            Ваша палитра:
-                        </Text>
-                        <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-5">
-                            {palette.map((color, index) => (
-                                <div
-                                    key={index}
-                                    className="flex flex-col items-center"
-                                >
-                                    <div
-                                        className="mb-2 h-24 w-full rounded-md shadow-md"
-                                        style={{ backgroundColor: color }}
-                                    ></div>
-                                    <Tooltip text="Нажмите, чтобы скопировать">
-                                        <Snippet text={color} width="100%" />
-                                    </Tooltip>
-                                </div>
-                            ))}
-                        </div>
-                    </Card>
-                )}
+                <PaletteDisplay palette={palette} />
             </div>
+
+            <HistorySection
+                history={history}
+                selectedHistoryIndices={selectedHistoryIndices}
+                handleToggleHistorySelection={handleToggleHistorySelection}
+                handleExportSelected={handleExportSelected}
+            />
         </main>
     );
 }
